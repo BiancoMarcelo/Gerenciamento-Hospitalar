@@ -3,12 +3,11 @@ package com.agendamento_service.agendamento_service.service;
 import com.agendamento_service.agendamento_service.dto.*;
 import com.agendamento_service.agendamento_service.mapper.AgendamentoMapper;
 import com.agendamento_service.agendamento_service.mapper.PacienteMapper;
-import com.agendamento_service.agendamento_service.messaging.EventoPublisher;
+import com.agendamento_service.agendamento_service.messaging.event.EventoPublisher;
 import com.agendamento_service.agendamento_service.model.Agendamento;
 import com.agendamento_service.agendamento_service.model.Paciente;
 import com.agendamento_service.agendamento_service.model.TipoAgendamento;
 import com.agendamento_service.agendamento_service.repository.AgendamentoRepository;
-import com.agendamento_service.agendamento_service.repository.PacienteRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,23 +23,22 @@ import java.util.List;
 public class AgendamentoService {
 
     private final AgendamentoRepository agendamentoRepository;
-    private final PacienteRepository pacienteRepository;
     private final AgendamentoMapper agendamentoMapper;
-    private final PacienteMapper pacienteMapper;
     private final EventoPublisher eventoPublisher;
+    private final PacienteService pacienteService;
+    private final PacienteMapper pacienteMapper;
 
     @Transactional
-    public AgendamentoResponseDTO agendarConsulta (AgendamentoConsultaRequestDTO agendamentoConsultaRequestDTO) {
+    public AgendamentoResponseDTO agendarConsulta(AgendamentoConsultaRequestDTO agendamentoConsultaRequestDTO) {
         log.info("Agendando consulta para o paciente: {}, CPF: {} ",
                 agendamentoConsultaRequestDTO.getPaciente().getNome(), agendamentoConsultaRequestDTO.getPaciente().getCpf());
 
-        Paciente paciente = buscarOuCriarPaciente(agendamentoConsultaRequestDTO.getPaciente());
+        Paciente paciente = pacienteService.buscarPacienteBancoDados(agendamentoConsultaRequestDTO.getPaciente().getCpf());
 
         validarHorarioPaciente(paciente.getCpf(), agendamentoConsultaRequestDTO.getHorario());
         validarMedicoDisponivel(agendamentoConsultaRequestDTO.getMedico(), agendamentoConsultaRequestDTO.getHorario());
 
-        Agendamento agendamento = agendamentoMapper.toEntityConsulta(agendamentoConsultaRequestDTO, paciente);
-        Agendamento agendamentoSalvo = agendamentoRepository.save(agendamento);
+        Agendamento agendamentoSalvo = agendamentoRepository.save(agendamentoMapper.toEntityConsulta(agendamentoConsultaRequestDTO, paciente));
 
         eventoPublisher.publicarConsulta(agendamentoSalvo);
 
@@ -51,21 +49,21 @@ public class AgendamentoService {
                         agendamentoConsultaRequestDTO.getMedico(),
                         agendamentoConsultaRequestDTO.getPaciente().getNome(),
                         agendamentoConsultaRequestDTO.getHorario()))
-                .codigo(agendamento.getId().toString())
+                .codigo(agendamentoSalvo.getId().toString())
                 .build();
     }
 
     @Transactional
-    public AgendamentoResponseDTO agendarExame(AgendamentoExameRequestDTO agendamentoExameRequestDTO){
+    public AgendamentoResponseDTO agendarExame(AgendamentoExameRequestDTO agendamentoExameRequestDTO) {
         log.info("Agendando consulta exame {} para o paciente {} ",
                 agendamentoExameRequestDTO.getExame(), agendamentoExameRequestDTO.getPaciente().getNome());
 
-        Paciente paciente = buscarOuCriarPaciente(agendamentoExameRequestDTO.getPaciente());
+        PacienteDTO paciente = pacienteService.buscarPaciente(agendamentoExameRequestDTO.getPaciente().getCpf());
 
         validarHorarioPaciente(agendamentoExameRequestDTO.getPaciente().getCpf(), agendamentoExameRequestDTO.getHorario());
         validarExameDisponivel(agendamentoExameRequestDTO.getExame(), agendamentoExameRequestDTO.getHorario());
 
-        Agendamento agendamento = agendamentoMapper.toEntityExame(agendamentoExameRequestDTO, paciente);
+        Agendamento agendamento = agendamentoMapper.toEntityExame(agendamentoExameRequestDTO, pacienteMapper.toEntity(paciente));
         Agendamento agendamentoSalvo = agendamentoRepository.save(agendamento);
 
         eventoPublisher.publicarExame(agendamentoSalvo);
@@ -89,7 +87,7 @@ public class AgendamentoService {
         log.info("Buscando consulta {} do usuário de CPF: {} ", id, cpf);
 
         Agendamento agendamentoExistente = agendamentoRepository.findById(id)
-                .orElseThrow(()-> {
+                .orElseThrow(() -> {
                     log.info("Agendamento não encontrado pelo id: {} ", id);
                     return new RuntimeException("Não foi possível encontrar o agendamento pelo Id fornecido");
                 });
@@ -121,7 +119,7 @@ public class AgendamentoService {
         log.info("Buscando exame {} do usuário de CPF: {} ", id, cpf);
 
         Agendamento agendamentoExistente = agendamentoRepository.findById(id)
-                .orElseThrow(()-> {
+                .orElseThrow(() -> {
                     log.info("Exame não encontrado pelo id: {} ", id);
                     return new RuntimeException("Não foi possível encontrar o exame pelo Id fornecido");
                 });
@@ -149,11 +147,11 @@ public class AgendamentoService {
     }
 
     @Transactional
-    public void deletarAgendaemento (Long id) {
+    public void deletarAgendaemento(Long id) {
         log.info("Deletando consulta de Id: {} ", id);
 
         Agendamento agendamentoExistente = agendamentoRepository.findById(id)
-                .orElseThrow(()-> {
+                .orElseThrow(() -> {
                     log.info("Agendamento não encontrado pelo id: {} ", id);
                     return new RuntimeException("Não foi possível encontrar o agendamento pelo Id fornecido");
                 });
@@ -167,16 +165,6 @@ public class AgendamentoService {
         List<Agendamento> agendamentos = agendamentoRepository.findAll();
         return agendamentos.stream().toList();
 
-    }
-
-
-    private Paciente buscarOuCriarPaciente(PacienteDTO pacienteDTO) {
-        return pacienteRepository.findByCpf(pacienteDTO.getCpf())
-                .orElseGet(() -> {
-                    log.info("Criando novo paciente: {}", pacienteDTO.getNome());
-                    Paciente novoPaciente = pacienteMapper.toEntity(pacienteDTO);
-                    return pacienteRepository.save(novoPaciente);
-                });
     }
 
     private void validarHorarioPaciente (String cpf, java.time.LocalDateTime horario) {

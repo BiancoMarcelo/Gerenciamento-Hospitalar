@@ -2,11 +2,9 @@ package com.clinica_service.clinica_service.repository;
 
 import com.clinica_service.clinica_service.model.Consulta;
 import com.clinica_service.clinica_service.model.StatusConsulta;
-import org.apache.tomcat.util.bcel.Const;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -22,7 +20,7 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
 
     List<Consulta> findByStatus(StatusConsulta statusConsulta);
 
-    boolean existsByEspecilidadeMedicoAndHorario(String especialidade, LocalDateTime horario);
+    boolean existsByEspecialidadeMedicoAndHorario(String especialidade, LocalDateTime horario);
 
 
 }

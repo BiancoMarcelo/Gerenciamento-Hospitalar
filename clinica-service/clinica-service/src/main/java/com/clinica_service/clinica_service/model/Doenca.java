@@ -19,7 +19,7 @@ public class Doenca {
     private Long id;
 
     @Column(nullable = false)
-    private String nome;
+    private String nomeDoenca;
 
     @ManyToMany
     @JoinTable(
