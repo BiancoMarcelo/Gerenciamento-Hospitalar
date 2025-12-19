@@ -1,9 +1,5 @@
-package com.agendamento_service.agendamento_service.dto;
+package com.agendamento_service.agendamento_service.dto.pacientedto;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -13,6 +9,8 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class PacienteDTO {
+
+    private Long id;
 
     @NotBlank(message = "Nome é obrigatório")
     @Size(min = 3, max = 100, message = "Nome deve ter entre 3 e 100 caracteres")

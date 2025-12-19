@@ -3,6 +3,8 @@ package com.clinica_service.clinica_service.service;
 import com.clinica_service.clinica_service.dto.consultadto.atenderconsulta.AtenderConsultaRequestDTO;
 import com.clinica_service.clinica_service.dto.consultadto.atenderconsulta.AtenderConsultaResponseDTO;
 import com.clinica_service.clinica_service.dto.procedimentodto.ProcedimentoDTO;
+import com.clinica_service.clinica_service.exception.custom.BadRequestException;
+import com.clinica_service.clinica_service.exception.custom.ConflictException;
 import com.clinica_service.clinica_service.mapper.ProcedimentoMapper;
 import com.clinica_service.clinica_service.messaging.ProcedimentoPublisher;
 import com.clinica_service.clinica_service.model.*;
@@ -28,6 +30,7 @@ public class AtendimentoService {
     private final ProcedimentoMapper procedimentoMapper;
     private final ProcedimentoPublisher procedimentoPublisher;
 
+
     @Transactional
     public AtenderConsultaResponseDTO atenderConsulta (AtenderConsultaRequestDTO atenderConsultaRequestDTO) {
         log.info("Iniciando atendimento pelo CPF: {} ", atenderConsultaRequestDTO.getCpfPaciente());
@@ -35,7 +38,7 @@ public class AtendimentoService {
         Consulta consulta = buscarConsulta(atenderConsultaRequestDTO);
 
         if (consulta.getStatus() == StatusConsulta.ATENDIDA) {
-            throw new RuntimeException("Essa consulta já foi atendida!");
+            throw new ConflictException("Essa consulta já foi atendida!");
         }
 
         List<Sintoma> sintomas = processarSintomas(atenderConsultaRequestDTO.getSintomas());
@@ -88,13 +91,13 @@ public class AtendimentoService {
             Consulta consulta = consultaService.buscarPorId(atenderConsultaRequestDTO.getCodigoConsulta());
 
             if (!consulta.getCpfPaciente().equals(atenderConsultaRequestDTO.getCpfPaciente())) {
-                throw new RuntimeException("Consulta não pertence ao CPF informado");
+                throw new ConflictException("Consulta não pertence ao CPF informado");
             }
 
             return consulta;
         }
 
-        throw new RuntimeException("Necessário informar ou horário ou código da consulta");
+        throw new BadRequestException("Necessário informar ou horário ou código da consulta");
     }
 
     private List<Sintoma> processarSintomas(List<String>descricoesSintomas) {
@@ -103,7 +106,7 @@ public class AtendimentoService {
         List<Sintoma> sintomas = new ArrayList<>();
 
         for (String descricao : descricoesSintomas) {
-            Sintoma sintoma = sintomaRepository.findByDescricao(descricao.toLowerCase())
+            Sintoma sintoma = sintomaRepository.findByDescricaoIgnoreCase(descricao.toLowerCase())
                     .orElseGet(()-> {
                         log.warn("Sintoma '{}'não encontrado no banco de dados. Criando com prioridade padrão.", descricao);
                         Sintoma novoSintoma = Sintoma.builder()
@@ -176,5 +179,14 @@ public class AtendimentoService {
             procedimentoPublisher.enviarProcedimento(proc);
 
         }
+    }
+
+    private PrioridadeAtendimento determinarPrioridade(List<Sintoma> sintomas) {
+        Integer prioridadeMaxima = sintomas.stream()
+                .map(Sintoma::getPrioridade)
+                .max(Integer::compareTo)
+                .orElse(2);
+
+        return PrioridadeAtendimento.doNivel(prioridadeMaxima);
     }
 }

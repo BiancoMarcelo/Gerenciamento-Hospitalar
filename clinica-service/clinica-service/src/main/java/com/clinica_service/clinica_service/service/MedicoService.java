@@ -1,6 +1,7 @@
 package com.clinica_service.clinica_service.service;
 
 import com.clinica_service.clinica_service.dto.medicodto.MedicoDTO;
+import com.clinica_service.clinica_service.exception.custom.ResourceNotFoundException;
 import com.clinica_service.clinica_service.mapper.MedicoMapper;
 import com.clinica_service.clinica_service.model.Medico;
 import com.clinica_service.clinica_service.repository.MedicoRepository;
@@ -36,7 +37,7 @@ public class MedicoService {
         return medicoMapper.toDTO(medicoRepository.findById(id)
                 .orElseThrow(()-> {
             log.error("Medico não encontrado pelo Id fornecido: {} ", id);
-            return new RuntimeException("Medico não encontrado pelo Id fornecido");
+            return new ResourceNotFoundException("Medico não encontrado pelo Id fornecido");
         }));
     }
 
@@ -46,7 +47,7 @@ public class MedicoService {
         return medicoMapper.toDTO(medicoRepository.findByNomeMedico(nomeMedico)
                 .orElseThrow(()->{
                     log.error("Médico não encontrado pelo nome: {}", nomeMedico);
-                    return new RuntimeException("Médico não encontrado pelo nome fornecido");
+                    return new ResourceNotFoundException("Médico não encontrado pelo nome fornecido");
                 }));
     }
 
@@ -89,7 +90,7 @@ public class MedicoService {
         log.info("Deletando médico de Id: {} ", id);
 
         if (!medicoRepository.existsById(id)) {
-            throw new RuntimeException("Médico não encontrado");
+            throw new ResourceNotFoundException("Médico não encontrado");
         }
 
         medicoRepository.deleteById(id);

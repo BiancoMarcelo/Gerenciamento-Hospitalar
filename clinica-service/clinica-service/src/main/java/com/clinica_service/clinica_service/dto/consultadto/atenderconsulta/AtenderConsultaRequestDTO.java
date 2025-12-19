@@ -20,6 +20,8 @@ public class AtenderConsultaRequestDTO {
 
     private Long codigoConsulta;
 
+    private int prioridade;
+
     @NotEmpty(message = "Deve informar pelo menos 1 sintoma")
     private List<String> sintomas;
 }

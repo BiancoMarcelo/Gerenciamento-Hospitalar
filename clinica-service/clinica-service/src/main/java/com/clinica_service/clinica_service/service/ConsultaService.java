@@ -3,6 +3,7 @@ package com.clinica_service.clinica_service.service;
 import com.clinica_service.clinica_service.dto.consultadto.ConsultaDTO;
 import com.clinica_service.clinica_service.dto.consultadto.verificarconsulta.VerificarConsultaRequestDTO;
 import com.clinica_service.clinica_service.dto.consultadto.verificarconsulta.VerificarConsultaResponseDTO;
+import com.clinica_service.clinica_service.exception.custom.ResourceNotFoundException;
 import com.clinica_service.clinica_service.mapper.ConsultaMapper;
 import com.clinica_service.clinica_service.model.Consulta;
 import com.clinica_service.clinica_service.model.StatusConsulta;
@@ -97,7 +98,7 @@ public class ConsultaService {
         return consultaRepository.findByCpfPacienteAndHorario(cpf, horario)
                 .orElseThrow(()->{
                     log.error("Consulta não encontrada para o CPF {} no horário {}", cpf, horario);
-                    return new RuntimeException("Consulta não encontrada");
+                    return new ResourceNotFoundException("Consulta não encontrada");
                 });
     }
 
@@ -106,7 +107,7 @@ public class ConsultaService {
         return consultaRepository.findById(id)
                 .orElseThrow(()-> {
                     log.info("Consulta não encontrada pelo id: {} ", id);
-                    return new RuntimeException("Não encontrado pelo id fornecido");
+                    return new ResourceNotFoundException("Não encontrado pelo id fornecido");
                 });
     }
 }

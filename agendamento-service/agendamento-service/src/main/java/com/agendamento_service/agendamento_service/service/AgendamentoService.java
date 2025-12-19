@@ -1,6 +1,13 @@
 package com.agendamento_service.agendamento_service.service;
 
-import com.agendamento_service.agendamento_service.dto.*;
+import com.agendamento_service.agendamento_service.client.ClinicaClient;
+import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoConsultaRequestDTO;
+import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoDTO;
+import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoExameRequestDTO;
+import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoResponseDTO;
+import com.agendamento_service.agendamento_service.dto.pacientedto.PacienteDTO;
+import com.agendamento_service.agendamento_service.exception.custom.ConflictException;
+import com.agendamento_service.agendamento_service.exception.custom.ResourceNotFoundException;
 import com.agendamento_service.agendamento_service.mapper.AgendamentoMapper;
 import com.agendamento_service.agendamento_service.mapper.PacienteMapper;
 import com.agendamento_service.agendamento_service.messaging.event.EventoPublisher;
@@ -27,6 +34,7 @@ public class AgendamentoService {
     private final EventoPublisher eventoPublisher;
     private final PacienteService pacienteService;
     private final PacienteMapper pacienteMapper;
+    private final ClinicaClient clinicaClient;
 
     @Transactional
     public AgendamentoResponseDTO agendarConsulta(AgendamentoConsultaRequestDTO agendamentoConsultaRequestDTO) {
@@ -44,13 +52,8 @@ public class AgendamentoService {
 
         log.info("Consulta agendada com sucesso. Id: {} ", agendamentoSalvo.getId());
 
-        return AgendamentoResponseDTO.builder()
-                .mensagem(String.format("O %s de %s foi marcado para %s ",
-                        agendamentoConsultaRequestDTO.getMedico(),
-                        agendamentoConsultaRequestDTO.getPaciente().getNome(),
-                        agendamentoConsultaRequestDTO.getHorario()))
-                .codigo(agendamentoSalvo.getId().toString())
-                .build();
+        return agendamentoMapper.toAgendamentoConsultaResponseDTO(agendamentoSalvo);
+
     }
 
     @Transactional
@@ -58,28 +61,32 @@ public class AgendamentoService {
         log.info("Agendando consulta exame {} para o paciente {} ",
                 agendamentoExameRequestDTO.getExame(), agendamentoExameRequestDTO.getPaciente().getNome());
 
-        PacienteDTO paciente = pacienteService.buscarPaciente(agendamentoExameRequestDTO.getPaciente().getCpf());
+        Paciente paciente = pacienteService.buscarPacienteBancoDados(agendamentoExameRequestDTO.getPaciente().getCpf());
 
         validarHorarioPaciente(agendamentoExameRequestDTO.getPaciente().getCpf(), agendamentoExameRequestDTO.getHorario());
         validarExameDisponivel(agendamentoExameRequestDTO.getExame(), agendamentoExameRequestDTO.getHorario());
 
-        Agendamento agendamento = agendamentoMapper.toEntityExame(agendamentoExameRequestDTO, pacienteMapper.toEntity(paciente));
-        Agendamento agendamentoSalvo = agendamentoRepository.save(agendamento);
+        Agendamento agendamento = agendamentoRepository.save(agendamentoMapper.toEntityExame(agendamentoExameRequestDTO, paciente));
 
-        eventoPublisher.publicarExame(agendamentoSalvo);
+        eventoPublisher.publicarExame(agendamento);
 
-        return AgendamentoResponseDTO.builder()
-                .mensagem(String.format("O %s de %s foi marcado para %s ",
-                        agendamentoExameRequestDTO.getExame(),
-                        agendamentoExameRequestDTO.getPaciente().getNome(),
-                        agendamentoExameRequestDTO.getHorario()))
-                .codigo(agendamento.getId().toString())
-                .build();
+        return agendamentoMapper.toAgendamentoExameResponseDTO(agendamento);
+
     }
 
-    public List<Agendamento> buscarPorCPF(String cpf) {
+    public List<AgendamentoDTO> buscarPorCPF(String cpf) {
         log.info("Buscando agendamentos disponíveis para o CPF: {} ", cpf);
-        return agendamentoRepository.findByPaciente_Cpf(cpf);
+
+        if (!agendamentoRepository.existsByPaciente_Cpf(cpf)) {
+            log.info("Não encontrado pelo CPF: {}", cpf);
+            throw new ResourceNotFoundException("Paciente não encontrado pelo CPF: " + cpf);
+        }
+
+        return agendamentoRepository.findByPaciente_Cpf(cpf).stream()
+                .map((agendamento)-> {
+                    AgendamentoDTO dto = agendamentoMapper.toAgendamentoDTO(agendamento);
+                    return dto;
+                }).toList();
     }
 
     @Transactional
@@ -89,7 +96,7 @@ public class AgendamentoService {
         Agendamento agendamentoExistente = agendamentoRepository.findById(id)
                 .orElseThrow(() -> {
                     log.info("Agendamento não encontrado pelo id: {} ", id);
-                    return new RuntimeException("Não foi possível encontrar o agendamento pelo Id fornecido");
+                    return new ResourceNotFoundException("Consulta não encontrada pelo ID: " + id);
                 });
         if (!agendamentoExistente.getPaciente().getCpf().equals(cpf)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esse agendamento não pertence ao CPF informado");
@@ -121,7 +128,7 @@ public class AgendamentoService {
         Agendamento agendamentoExistente = agendamentoRepository.findById(id)
                 .orElseThrow(() -> {
                     log.info("Exame não encontrado pelo id: {} ", id);
-                    return new RuntimeException("Não foi possível encontrar o exame pelo Id fornecido");
+                    return new ResourceNotFoundException("Consulta não encontrada pelo ID: " + id);
                 });
         if (!agendamentoExistente.getPaciente().getCpf().equals(cpf)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ese agendamento não pertence ao CPF informado");
@@ -153,27 +160,34 @@ public class AgendamentoService {
         Agendamento agendamentoExistente = agendamentoRepository.findById(id)
                 .orElseThrow(() -> {
                     log.info("Agendamento não encontrado pelo id: {} ", id);
-                    return new RuntimeException("Não foi possível encontrar o agendamento pelo Id fornecido");
+                    return new ResourceNotFoundException("Consulta não encontrada pelo ID: " + id);
                 });
 
         agendamentoRepository.deleteById(id);
         log.info("Agendamento deletado!");
     }
 
-    public List<Agendamento> listarTodosAgendamentos() {
+    @Transactional
+    public void deletarAgendamentos(){
+        log.info("Deletando todos agendamentos");
+        agendamentoRepository.deleteAll();
+    }
+
+    public List<AgendamentoDTO> listarTodosAgendamentos() {
         log.info("Listando todos os agendamentos");
-        List<Agendamento> agendamentos = agendamentoRepository.findAll();
-        return agendamentos.stream().toList();
+        return agendamentoRepository.findAll().stream()
+                .map((agendamento -> {
+                    AgendamentoDTO dto = agendamentoMapper.toAgendamentoDTO(agendamento);
+                    return dto;
+                })).toList();
 
     }
 
     private void validarHorarioPaciente (String cpf, java.time.LocalDateTime horario) {
         if (agendamentoRepository.existsByPaciente_CpfAndHorario(cpf, horario)) {
             log.warn("Conflito de agendamento: Paciente {} já possui agendamento no horário {} ", cpf, horario);
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    String.format("O paciente já possui agendamento no horário %s", horario)
-            );
+            throw new ConflictException("O paciente já possui agendamento no horário: " +  horario);
+
         }
     }
 
@@ -181,21 +195,26 @@ public class AgendamentoService {
         if (agendamentoRepository.existsByEspecialidadeAndHorarioAndTipoAgendamento(
                 especialidade, horario, TipoAgendamento.CONSULTA)) {
             log.warn("Conflito: Médico {} já ocupado em {} ", especialidade, horario);
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    String.format("Médico da especialidade %s não está disponível no horário %s", especialidade, horario)
-            );
+            throw new ConflictException("Médico da especialidade " + especialidade + " não está disponível no horário: " + horario);
+
         }
+
+        boolean disponivelNaClinica = clinicaClient.verificarDisponibilidadeMedico(especialidade, horario);
+
+        if (!disponivelNaClinica) {
+            log.warn("Conflito: médico {} já ocupado em {} na clíica", especialidade, horario);
+            throw new ConflictException("Médico da especialidade " + especialidade + " não está disponível no horário: " + horario);
+        }
+
+        log.info("Médico {} disponível no horário: {} ", especialidade, horario);
     }
 
     private void validarExameDisponivel(String tipoExame, java.time.LocalDateTime horario) {
         if (agendamentoRepository.existsByTipoExameAndHorarioAndTipoAgendamento(
                 tipoExame, horario, TipoAgendamento.EXAME)) {
             log.warn("Conflito: Exame {} já agendado em {} ", tipoExame, horario);
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    String.format("Exame do tipo %s não está disponível no horário %s", tipoExame, horario)
-            );
+            throw new ConflictException("Exame do tipo " + tipoExame + " não está disponível no horário: " + horario);
+
         }
     }
 }

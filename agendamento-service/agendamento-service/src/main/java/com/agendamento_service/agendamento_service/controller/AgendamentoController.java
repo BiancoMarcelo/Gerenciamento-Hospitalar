@@ -1,15 +1,14 @@
 package com.agendamento_service.agendamento_service.controller;
 
-import com.agendamento_service.agendamento_service.dto.AgendamentoConsultaRequestDTO;
-import com.agendamento_service.agendamento_service.dto.AgendamentoExameRequestDTO;
-import com.agendamento_service.agendamento_service.dto.AgendamentoResponseDTO;
-import com.agendamento_service.agendamento_service.dto.PacienteDTO;
+import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoConsultaRequestDTO;
+import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoDTO;
+import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoExameRequestDTO;
+import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoResponseDTO;
+import com.agendamento_service.agendamento_service.dto.pacientedto.PacienteDTO;
 import com.agendamento_service.agendamento_service.model.Agendamento;
-import com.agendamento_service.agendamento_service.model.Paciente;
 import com.agendamento_service.agendamento_service.service.AgendamentoService;
 import com.agendamento_service.agendamento_service.service.PacienteService;
 import jakarta.validation.Valid;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.Response;
@@ -26,7 +25,6 @@ import java.util.List;
 public class AgendamentoController {
 
     private final AgendamentoService agendamentoService;
-    private final PacienteService pacienteService;
 
     @PostMapping("/cadastro/consulta")
     public ResponseEntity<AgendamentoResponseDTO> agendarConsulta (
@@ -46,40 +44,18 @@ public class AgendamentoController {
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }
 
-    @PostMapping("/cadastro/paciente")
-    public ResponseEntity<PacienteDTO> cadastrarPaciente (
-            @Valid @RequestBody PacienteDTO pacienteDTO) {
-        log.info("Cadastrando novo paciente");
-        PacienteDTO pacienteCadsatrado = pacienteService.criarPaciente(pacienteDTO);
-        return ResponseEntity.status(HttpStatus.OK).body(pacienteCadsatrado);
-    }
-
     @GetMapping("/agendamentos/{cpf}")
-    public ResponseEntity<List<Agendamento>> consultarAgendamentos(@PathVariable String cpf) {
+    public ResponseEntity<List<AgendamentoDTO>> consultarAgendamentos(@PathVariable String cpf) {
         log.info("Buscando agendamentos do CPF: {} ", cpf);
-        List<Agendamento> agendamentos = agendamentoService.buscarPorCPF(cpf);
+        List<AgendamentoDTO> agendamentos = agendamentoService.buscarPorCPF(cpf);
         return ResponseEntity.ok(agendamentos);
     }
 
     @GetMapping("/agendamentos")
-    public ResponseEntity<List<Agendamento>> consultarTodosAgendamentos() {
+    public ResponseEntity<List<AgendamentoDTO>> consultarTodosAgendamentos() {
         log.info("Buscando todos agendamentos");
-        List<Agendamento> agendamentos = agendamentoService.listarTodosAgendamentos();
+        List<AgendamentoDTO> agendamentos = agendamentoService.listarTodosAgendamentos();
         return ResponseEntity.ok(agendamentos);
-    }
-
-    @GetMapping("/pacientes")
-    public ResponseEntity<List<PacienteDTO>> buscarPacientes() {
-        log.info("Buscando todos os pacientes");
-        List<PacienteDTO> pacienteList = pacienteService.listarPacientes();
-        return ResponseEntity.ok(pacienteList);
-    }
-
-
-    @GetMapping("/paciente/{cpf}")
-    public ResponseEntity<PacienteDTO> buscarPorCpf(@PathVariable String cpf) {
-        log.info("Buscando paciente pelo CPF de: {} ", cpf);
-        return ResponseEntity.ok(pacienteService.buscarPaciente(cpf));
     }
 
     @PutMapping("/consulta/atualizar/{cpf}/{id}")
@@ -106,6 +82,13 @@ public class AgendamentoController {
             @PathVariable String cpf) {
         log.info("Deletando agendamento do CPF: {} de Id: {} ", cpf, id);
         agendamentoService.deletarAgendaemento(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/agendamentos")
+    public ResponseEntity<Void> deletarTodosAgendamentos() {
+        log.info("Deletando todos os agendamentos");
+        agendamentoService.deletarAgendamentos();
         return ResponseEntity.noContent().build();
     }
 }

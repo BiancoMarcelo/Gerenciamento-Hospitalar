@@ -1,11 +1,16 @@
 package com.agendamento_service.agendamento_service.mapper;
 
-import com.agendamento_service.agendamento_service.dto.PacienteDTO;
+import com.agendamento_service.agendamento_service.dto.pacientedto.PacienteDTO;
 import com.agendamento_service.agendamento_service.model.Paciente;
+import lombok.AllArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 @Component
+@AllArgsConstructor
 public class PacienteMapper {
+
+    private final ModelMapper modelMapper;
 
 
     public PacienteDTO toDTO (Paciente paciente) {
@@ -25,6 +30,11 @@ public class PacienteMapper {
                 .idade(pacienteDTO.getIdade())
                 .sexo(pacienteDTO.getSexo())
                 .build();
+    }
+
+    public PacienteDTO toGlobalDTO (Paciente paciente) {
+        return modelMapper.map(paciente, PacienteDTO.class);
+
     }
 
 }

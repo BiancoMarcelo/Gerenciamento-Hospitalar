@@ -11,6 +11,8 @@ import java.util.List;
 @Repository
 public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> {
 
+    boolean existsByPaciente_Cpf(String cpf);
+
 
 
     boolean existsByPaciente_CpfAndHorario(

@@ -2,6 +2,7 @@ package com.agendamento_service.agendamento_service.messaging.event;
 
 import com.agendamento_service.agendamento_service.config.RabbitMQConfig;
 import com.agendamento_service.agendamento_service.messaging.converter.AgendamentoToConsultaDTO;
+import com.agendamento_service.agendamento_service.messaging.converter.AgendamentoToProcedimentoRequestDTO;
 import com.agendamento_service.agendamento_service.model.Agendamento;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +32,16 @@ public class EventoPublisher {
 
     public void publicarExame(Agendamento agendamento) {
         log.info("Enviando exame para fila: {} ", agendamento.getId());
-        rabbitTemplate.convertAndSend(RabbitMQConfig.QUEUE_EXAME, agendamento);
+
+        AgendamentoToProcedimentoRequestDTO converterParaRequestDTO = AgendamentoToProcedimentoRequestDTO.builder()
+                .cpfPaciente(agendamento.getPaciente().getCpf())
+                .prioridade("padrão")
+                .agendamentoId(agendamento.getId())
+                .nomeProcedimento(agendamento.getTipoExame())
+                .nomeExame(agendamento.getTipoExame())
+                .horarioProcedimento(agendamento.getHorario())
+                .build();
+        rabbitTemplate.convertAndSend(RabbitMQConfig.QUEUE_EXAME, converterParaRequestDTO);
         log.info("Exame enviado com sucesso");
     }
 

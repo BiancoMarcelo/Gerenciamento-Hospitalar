@@ -1,4 +1,4 @@
-package com.agendamento_service.agendamento_service.dto;
+package com.agendamento_service.agendamento_service.dto.agendamentodto;
 
 import lombok.*;
 

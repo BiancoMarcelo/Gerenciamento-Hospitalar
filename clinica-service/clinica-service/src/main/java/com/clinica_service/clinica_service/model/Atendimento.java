@@ -31,7 +31,6 @@ public class Atendimento {
             joinColumns = @JoinColumn(name = "atendimento_id"),
             inverseJoinColumns = @JoinColumn(name = "sintoma_id")
     )
-    @Builder.Default
     private List<Sintoma> sintomas = new ArrayList<>();
 
     @ManyToMany

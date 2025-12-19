@@ -1,5 +1,6 @@
-package com.agendamento_service.agendamento_service.dto;
+package com.agendamento_service.agendamento_service.dto.agendamentodto;
 
+import com.agendamento_service.agendamento_service.dto.pacientedto.PacienteDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
@@ -13,7 +14,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AgendamentoExameRequestDTO {
+
+public class AgendamentoConsultaRequestDTO {
 
     @Valid
     @NotNull(message = "Paciente é obrigatório")
@@ -23,6 +25,7 @@ public class AgendamentoExameRequestDTO {
     @Future(message = "Horário deve ser futuro")
     private LocalDateTime horario;
 
-    @NotBlank(message = "Tipo de exame é obrigatório")
+    private String medico;
+
     private String exame;
 }
