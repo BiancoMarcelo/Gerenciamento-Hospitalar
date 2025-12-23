@@ -1,0 +1,206 @@
+version: '3.8'
+
+services:
+
+  mysql-agendamento:
+    image: mysql:8.0
+    container_name: mysql-agendamento
+    environment:
+      MYSQL_ROOT_PASSWORD: Laphroaig10
+      MYSQL_DATABASE: agendamento_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-agendamento-data:/var/lib/mysql
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  mysql-clinica:
+    image: mysql:8.0
+    container_name: mysql-clinica
+    environment:
+      MYSQL_ROOT_PASSWORD: Laphroaig10
+      MYSQL_DATABASE: clinica_db
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql-clinica-data:/var/lib/mysql
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  mysql-medicina:
+    image: mysql:8.0
+    container_name: mysql-medicina
+    environment:
+      MYSQL_ROOT_PASSWORD: Laphroaig10
+      MYSQL_DATABASE: medicina_db
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql-medicina-data:/var/lib/mysql
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-hospital
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-hospital
+    ports:
+      - "6379:6379"
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.0
+    container_name: keycloak-hospital
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+    ports:
+      - "8180:8080"
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      timeout: 10s
+      retries: 10
+
+  agendamento-service:
+    build:
+      context: ./agendamento-service
+      dockerfile: Dockerfile
+    container_name: agendamento-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-agendamento:3306/agendamento_db?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Laphroaig10
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      CLINICA_SERVICE_URL: http://clinica-service:8082
+      MEDICINA_SERVICE_URL: http://medicina-service:8083
+    depends_on:
+      mysql-agendamento:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - hospital-network
+    restart: on-failure
+
+  clinica-service:
+    build:
+      context: ./clinica-service
+      dockerfile: Dockerfile
+    container_name: clinica-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-clinica:3306/clinica_db?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Laphroaig10
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+    depends_on:
+      mysql-clinica:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - hospital-network
+    restart: on-failure
+
+  medicina-service:
+    build:
+      context: ./medicina-service
+      dockerfile: Dockerfile
+    container_name: medicina-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-medicina:3306/medicina_db?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Laphroaig10
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+    depends_on:
+      mysql-medicina:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - hospital-network
+    restart: on-failure
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/hospital
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/hospital/protocol/openid-connect/certs
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      agendamento-service:
+        condition: service_started
+      clinica-service:
+        condition: service_started
+      medicina-service:
+        condition: service_started
+    networks:
+      - hospital-network
+    restart: on-failure
+
+volumes:
+  mysql-agendamento-data:
+  mysql-clinica-data:
+  mysql-medicina-data:
+  rabbitmq-data:
+
+networks:
+  hospital-network:
+    driver: bridge
