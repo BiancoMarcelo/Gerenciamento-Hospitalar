@@ -1,5 +1,6 @@
 package com.clinica_service.clinica_service.service;
 
+import com.clinica_service.clinica_service.client.AgendamentoClient;
 import com.clinica_service.clinica_service.dto.consultadto.atenderconsulta.AtenderConsultaRequestDTO;
 import com.clinica_service.clinica_service.dto.consultadto.atenderconsulta.AtenderConsultaResponseDTO;
 import com.clinica_service.clinica_service.dto.procedimentodto.ProcedimentoDTO;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,9 +28,11 @@ public class AtendimentoService {
     private final AtendimentoRepository atendimentoRepository;
     private final ConsultaService consultaService;
     private final SintomaRepository sintomaRepository;
+    private final ConsultaRepository consultaRepository;
     private final DoencaRepository doencaRepository;
     private final ProcedimentoMapper procedimentoMapper;
     private final ProcedimentoPublisher procedimentoPublisher;
+    private final AgendamentoClient agendamentoClient;
 
 
     @Transactional
@@ -70,6 +74,50 @@ public class AtendimentoService {
 
         return AtenderConsultaResponseDTO.builder()
                 .atendimentoId(atendimento.getId())
+                .possiveisDoencas(possiveisDoencas.stream()
+                        .map(Doenca::getNomeDoenca)
+                        .collect(Collectors.toList()))
+                .tratamentosSugeridos(tratamentosSugeridos)
+                .procedimentosNecessarios(procedimentosNecessarios)
+                .mensagem("Atendimento realizado com sucesso")
+                .build();
+
+    }
+
+    @Transactional
+    public AtenderConsultaResponseDTO prontoAtendimento (AtenderConsultaRequestDTO atenderConsultaRequestDTO) {
+        if (atenderConsultaRequestDTO.getCodigoConsulta() != null || atenderConsultaRequestDTO.getHorario() != null) {
+            log.info("Detectado inserção de um Id de agendamento: {} ou horário de agendamento: {}, " +
+                    "iniciando atendimento de consulta agendada", atenderConsultaRequestDTO.getCodigoConsulta(),
+                    atenderConsultaRequestDTO.getHorario());
+            return atenderConsulta(atenderConsultaRequestDTO);
+        }
+        if (atenderConsultaRequestDTO.getCpfPaciente() == null || atenderConsultaRequestDTO.getSintomas() == null) {
+            throw new BadRequestException("Informe o CPF do paciente e sintomas para pronto atendimento");
+        }
+
+        if (!agendamentoClient.validarPaciente(atenderConsultaRequestDTO.getCpfPaciente())) {
+            throw new RuntimeException("Paciente não encontrado pelo CPF: " + atenderConsultaRequestDTO.getCpfPaciente()
+                    + " verifique em agendamento-service se o paciente esta cadastrado!" );
+        }
+
+        LocalDateTime horarioAtual = LocalDateTime.now();
+
+        consultaService.validarHorarioEConsulta(atenderConsultaRequestDTO.getTipoConsulta(), horarioAtual);
+
+        List<Sintoma> sintomas = processarSintomas(atenderConsultaRequestDTO.getSintomas());
+
+        List<Doenca> possiveisDoencas = sugerirDoencas(atenderConsultaRequestDTO.getSintomas());
+
+        List<String> tratamentosSugeridos = coletarTratamentos(sintomas);
+
+        List<ProcedimentoDTO> procedimentosNecessarios = verificarProcedimentos(
+                possiveisDoencas,
+                atenderConsultaRequestDTO.getCpfPaciente(),
+                sintomas
+        );
+
+        return AtenderConsultaResponseDTO.builder()
                 .possiveisDoencas(possiveisDoencas.stream()
                         .map(Doenca::getNomeDoenca)
                         .collect(Collectors.toList()))

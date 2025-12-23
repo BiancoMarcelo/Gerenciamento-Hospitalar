@@ -16,13 +16,8 @@ import com.medicina_service.medicina_service.model.TipoProcedimento;
 import com.medicina_service.medicina_service.repository.ExameRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cglib.core.Local;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -48,6 +43,10 @@ public class ExameService {
             throw new BadRequestException("Tipo de exame não atendido pela rede: " + procedimentoRequestDTO.getNomeExame());
         }
 
+        validarHorario(procedimentoRequestDTO.getHorarioProcedimento(),
+                procedimentoRequestDTO.getPrioridade(),
+                TipoProcedimento.fromDescricao(procedimentoRequestDTO.getNomeExame().trim()));
+
 //        if (tipo.isAltaComplexidade() && !"MEDICO".equals(role)) {
 //            throw new RuntimeException("Procedimentos de alta complexidade só podem ser criados por médicos!");
 //        }
@@ -58,7 +57,7 @@ public class ExameService {
                 .cpfPaciente(procedimentoRequestDTO.getCpfPaciente())
                 .nomeExame(procedimentoRequestDTO.getNomeExame())
                 .prioridade(procedimentoRequestDTO.getPrioridade())
-                .statusAtendimento(StatusAtendimento.AGUARDANDO_AGENDAMENTO)
+                .statusAtendimento(StatusAtendimento.AGENDADO)
                 .build();
 
         exameRepository.save(exame);
@@ -88,6 +87,10 @@ public class ExameService {
 
         return exameMapper.toExameDTO(exame);
 
+    }
+
+    public TipoProcedimento validarProcedimento(String nomeExame) {
+        return TipoProcedimento.fromDescricao(nomeExame);
     }
 
     @Transactional
@@ -155,6 +158,16 @@ public class ExameService {
         exame.setStatusAtendimento(StatusAtendimento.REALIZADO);
         exameRepository.save(exame);
     }
+
+    public void deletarExame(Long id) {
+        log.info("Deletando exame de id: {} ", id);
+        Exame exame = exameRepository.findById(id)
+                .or(() -> exameRepository.findByAgendamentoId(id))
+                .orElseThrow(()-> new RuntimeException("Exame não encontrado pelo id fornecido"));
+        exame.setStatusAtendimento(StatusAtendimento.CANCELADO);
+        exameRepository.save(exame);
+    }
+
 
     private void validarHorario(LocalDateTime horario, String prioridade, TipoProcedimento tipoProcedimento) {
 

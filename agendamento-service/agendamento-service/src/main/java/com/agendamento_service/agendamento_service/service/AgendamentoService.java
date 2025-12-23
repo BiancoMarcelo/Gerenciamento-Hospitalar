@@ -1,15 +1,15 @@
 package com.agendamento_service.agendamento_service.service;
 
 import com.agendamento_service.agendamento_service.client.ClinicaClient;
+import com.agendamento_service.agendamento_service.client.MedicinaClient;
 import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoConsultaRequestDTO;
 import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoDTO;
 import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoExameRequestDTO;
 import com.agendamento_service.agendamento_service.dto.agendamentodto.AgendamentoResponseDTO;
-import com.agendamento_service.agendamento_service.dto.pacientedto.PacienteDTO;
+import com.agendamento_service.agendamento_service.exception.custom.BadRequestException;
 import com.agendamento_service.agendamento_service.exception.custom.ConflictException;
 import com.agendamento_service.agendamento_service.exception.custom.ResourceNotFoundException;
 import com.agendamento_service.agendamento_service.mapper.AgendamentoMapper;
-import com.agendamento_service.agendamento_service.mapper.PacienteMapper;
 import com.agendamento_service.agendamento_service.messaging.event.EventoPublisher;
 import com.agendamento_service.agendamento_service.model.Agendamento;
 import com.agendamento_service.agendamento_service.model.Paciente;
@@ -33,11 +33,16 @@ public class AgendamentoService {
     private final AgendamentoMapper agendamentoMapper;
     private final EventoPublisher eventoPublisher;
     private final PacienteService pacienteService;
-    private final PacienteMapper pacienteMapper;
+    private final MedicinaClient medicinaClient;
     private final ClinicaClient clinicaClient;
 
     @Transactional
     public AgendamentoResponseDTO agendarConsulta(AgendamentoConsultaRequestDTO agendamentoConsultaRequestDTO) {
+        log.info("Log de info para a especialidade: {}", agendamentoConsultaRequestDTO.getMedico());
+
+        if (!clinicaClient.validarConsulta(agendamentoConsultaRequestDTO.getMedico(), agendamentoConsultaRequestDTO.getHorario())) {
+            throw new BadRequestException("Tipo de consulta inválida: " + agendamentoConsultaRequestDTO.getMedico());
+        }
         log.info("Agendando consulta para o paciente: {}, CPF: {} ",
                 agendamentoConsultaRequestDTO.getPaciente().getNome(), agendamentoConsultaRequestDTO.getPaciente().getCpf());
 
@@ -58,6 +63,10 @@ public class AgendamentoService {
 
     @Transactional
     public AgendamentoResponseDTO agendarExame(AgendamentoExameRequestDTO agendamentoExameRequestDTO) {
+
+        if (!medicinaClient.exameExiste(agendamentoExameRequestDTO.getExame())) {
+            throw new BadRequestException("Tipo de exame invalido: " + agendamentoExameRequestDTO.getExame());
+        }
         log.info("Agendando consulta exame {} para o paciente {} ",
                 agendamentoExameRequestDTO.getExame(), agendamentoExameRequestDTO.getPaciente().getNome());
 
@@ -164,7 +173,18 @@ public class AgendamentoService {
                 });
 
         agendamentoRepository.deleteById(id);
-        log.info("Agendamento deletado!");
+
+        if (agendamentoExistente.getTipoAgendamento() == TipoAgendamento.EXAME) {
+            log.info("Tipo de exame: {}", agendamentoExistente.getTipoAgendamento() );
+            eventoPublisher.publicarExclusaoExame(id);
+        } else if (agendamentoExistente.getTipoAgendamento() == TipoAgendamento.CONSULTA) {
+            log.info("Tipo de consulta: {}", agendamentoExistente.getTipoAgendamento() );
+            eventoPublisher.publicarExclusaoConsulta(id);
+        } else {
+            throw new BadRequestException("Não foi possivel cancelar o agendamento");
+        }
+
+        log.info("Agendamento cancelado!");
     }
 
     @Transactional

@@ -31,16 +31,16 @@ public class ProcedimentoMapper {
     public ProcedimentoResponseDTO toProcedimentoCirurgicoDTO(Procedimento procedimentoCirurgico) {
         return ProcedimentoResponseDTO.builder()
                 .procedimentoId(procedimentoCirurgico.getId())
-                .mensagem(String.format("Id do procedimento para pré agendamento criado com id: {}, é necessário que o paciente agende o horário! "
-                        , procedimentoCirurgico.getId()))
+                .mensagem(String.format("Id do procedimento para pré agendamento criado com id: {" +
+                        procedimentoCirurgico.getId() + "}, é necessário que o paciente agende o horário!"))
                 .build();
 
     }
 
     public ConfirmacaoDeCriacaoResponseDTO toProcedimentoCirurgicoConfirmarHorarioDTO(Procedimento procedimentoCirurgico) {
         return ConfirmacaoDeCriacaoResponseDTO.builder()
-                .mensagem(String.format("Id do procedimento criado com número: {}, é necessário que o paciente agende o horário! "
-                        , procedimentoCirurgico.getId()))
+                .mensagem(String.format("Id do procedimento criado com número: {" + procedimentoCirurgico.getId() + "}"))
+                .horario(procedimentoCirurgico.getHorarioProcedimento())
                 .build();
 
     }

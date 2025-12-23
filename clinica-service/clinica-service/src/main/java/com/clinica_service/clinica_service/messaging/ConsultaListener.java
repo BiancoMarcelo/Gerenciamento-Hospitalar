@@ -27,5 +27,17 @@ public class ConsultaListener {
         }
     }
 
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_DELETE_CONSULTA)
+    public void receberDeleteConsulta(Long id) {
+        log.info("Mensagem recebida do RabbitMQ - Delete de exame com agendamentoId de: {} ", id);
+
+        try {
+            consultaService.deletarConsulta(id);
+            log.info("Consulta cancelada com sucesso!");
+        } catch (Exception e) {
+            log.error("Erro ao processar a consulta: {}", e.getMessage(), e);
+        }
+    }
+
 
 }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ExameRepository extends JpaRepository<Exame, Long> {
@@ -24,5 +25,9 @@ public interface ExameRepository extends JpaRepository<Exame, Long> {
             String prioridade
     );
 
+    Optional<Exame> findByAgendamentoId(Long id);
+
     boolean existsByHorarioExameAndPrioridadeNot(LocalDateTime horario, String prioridade);
+
+
 }

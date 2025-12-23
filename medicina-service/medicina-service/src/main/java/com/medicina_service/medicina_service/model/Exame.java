@@ -33,7 +33,6 @@ public class Exame {
     @Column(nullable = false)
     private LocalDateTime horarioExame;
 
-    @Enumerated
     @Column(nullable = false)
     private StatusAtendimento statusAtendimento;
 }

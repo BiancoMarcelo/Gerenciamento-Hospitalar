@@ -16,9 +16,16 @@ public class RabbitMQConfig {
 
     public static final String QUEUE_PROCEDIMENTO = "procedimento.queue";
 
+    public static final String QUEUE_DELETE_CONSULTA = "delete.consulta.queue";
+
     @Bean
     public Queue consultaQueue() {
         return new Queue(QUEUE_CONSULTA, true);
+    }
+
+    @Bean
+    public Queue deleteConsultaQueue() {
+        return new Queue(QUEUE_DELETE_CONSULTA, true);
     }
 
     @Bean

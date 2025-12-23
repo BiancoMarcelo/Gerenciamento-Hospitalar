@@ -17,6 +17,10 @@ public class RabbitMQConfig {
 
     public static final String QUEUE_EXAME = "exame.queue";
 
+    public static final String QUEUE_DELETE_CONSULTA = "delete.consulta.queue";
+
+    public static final String QUEUE_DELETE_EXAME = "delete.exame.queue";
+
     @Bean
     public Queue consultaQueue() {
         return new Queue(QUEUE_CONSULTA, true);
@@ -25,6 +29,16 @@ public class RabbitMQConfig {
     @Bean
     public Queue exameQueue() {
         return new Queue(QUEUE_EXAME, true);
+    }
+
+    @Bean
+    public Queue deleteConsultaQueue() {
+        return new Queue(QUEUE_DELETE_CONSULTA, true);
+    }
+
+    @Bean
+    public Queue deleteExameQueue() {
+        return new Queue(QUEUE_DELETE_EXAME, true);
     }
 
     @Bean

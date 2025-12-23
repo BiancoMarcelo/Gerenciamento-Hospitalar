@@ -19,6 +19,7 @@ public class SintomaMapper {
                 .id(sintoma.getId())
                 .descricao(sintoma.getDescricao())
                 .prioridade(sintoma.getPrioridade())
+                .tratamentos(sintoma.getTratamentosSugeridos())
                 .build();
     }
 }

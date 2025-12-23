@@ -27,7 +27,7 @@ public class PacienteService {
             throw new ConflictException("Paciente já existe em sistema!");
         }
         Paciente pacienteEntity = pacienteRepository.save(pacienteMapper.toEntity(pacienteDTO));
-        return pacienteMapper.toDTO(pacienteEntity);
+        return pacienteMapper.toGlobalDTO(pacienteEntity);
     }
 
     public List<PacienteDTO> listarPacientes() {

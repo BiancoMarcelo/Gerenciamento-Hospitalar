@@ -25,6 +25,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -68,7 +70,15 @@ public class ProcedimentoService {
 
     @Transactional
     public ProcedimentoResponseDTO criarProcedimento (ProcedimentoRequestDTO procedimentoRequestDTO) {
-        log.info("Criando procedimento: {} para o CPF: {}", procedimentoRequestDTO.getNomeProcedimento(), procedimentoRequestDTO.getCpfPaciente());
+        log.info("Criando procedimento: {} para o CPF: {}, com prioridade: {}",
+                procedimentoRequestDTO.getNomeProcedimento(), procedimentoRequestDTO.getCpfPaciente(),
+                procedimentoRequestDTO.getPrioridade());
+
+        if (procedimentoRequestDTO.getCpfPaciente() == null ||
+                procedimentoRequestDTO.getNomeProcedimento() == null ||
+                procedimentoRequestDTO.getPrioridade() == null) {
+            throw new BadRequestException("CPF, código do exame e prioridade são obrigatórios!");
+        }
 
         TipoProcedimento tipo;
 
@@ -81,9 +91,6 @@ public class ProcedimentoService {
 //        if (tipo.isAltaComplexidade() && !"MEDICO".equals(role)) {
 //            throw new RuntimeException("Procedimentos de alta complexidade só podem ser criados por médicos!");
 //        }
-        validarHorario(procedimentoRequestDTO.getHorarioProcedimento(),
-                procedimentoRequestDTO.getPrioridade(),
-                TipoProcedimento.fromDescricao(procedimentoRequestDTO.getNomeProcedimento().trim()));
 
         Procedimento procedimentoCirurgico = procedimentoRepository.save(procedimentoMapper.toProcedimentoCirurgicoEntity(procedimentoRequestDTO));
 
@@ -110,6 +117,8 @@ public class ProcedimentoService {
         procedimento.setStatusAtendimento(StatusAtendimento.AGENDADO);
 
         Procedimento procedimentoSalvo = procedimentoRepository.save(procedimento);
+
+        sobrescreverHorario(confirmacaoDeCriacaoRequestDTO.getHorario());
 
         log.info("Horário agendado com sucesso!");
 
@@ -158,6 +167,27 @@ public class ProcedimentoService {
         procedimentoRepository.save(procedimento);
     }
 
+    public void cancelarProcedimento(Long id) {
+        log.info("Encerrando procedimento de id: {}", id);
+        Procedimento procedimento = procedimentoRepository.findById(id)
+                .orElseThrow(()-> {
+                    log.error("Procedimento não encontrado pelo Id fornecido: {} ", id);
+                    return new RuntimeException("Não encontrado pelo Id fornecido");
+                });
+        procedimento.setStatusAtendimento(StatusAtendimento.CANCELADO);
+        procedimentoRepository.save(procedimento);
+    }
+
+    public void deletarProcedimento(Long id) {
+        log.info("Deletando procedimento de id: {}", id);
+        Procedimento procedimento = procedimentoRepository.findById(id)
+                .orElseThrow(()-> {
+                    log.error("Procedimento não encontrado pelo Id fornecido: {} ", id);
+                    return new RuntimeException("Não encontrado pelo Id fornecido");
+                });
+        procedimentoRepository.deleteById(id);
+    }
+
 
     private void validarHorario(LocalDateTime horario, String prioridade, TipoProcedimento tipoProcedimento) {
 
@@ -201,6 +231,25 @@ public class ProcedimentoService {
                 }
             }
         }
+    }
+
+    @Transactional
+    public void sobrescreverHorario(LocalDateTime horario) {
+        log.info("Sobrescrevendo horários de procedimentos");
+
+        List<Procedimento> procedimentosNoHorario = procedimentoRepository.findAllByHorarioProcedimento(horario);
+
+        if (procedimentosNoHorario.size() > 1) {
+            log.info("Quantidade de horários simultaneos encontrados: {} ", procedimentosNoHorario.size());
+
+            procedimentosNoHorario.forEach(proc -> {
+                if (!proc.getPrioridade().equalsIgnoreCase("emergencial")) {
+                    log.info("Deletando procedimento de id: {} ", proc.getId());
+                    cancelarProcedimento(proc.getId());
+                }
+            });
+        }
+
     }
 
 

@@ -5,6 +5,10 @@ import com.clinica_service.clinica_service.dto.procedimentodto.ProcedimentoReque
 import com.clinica_service.clinica_service.dto.procedimentodto.ProcedimentoResponseDTO;
 import com.clinica_service.clinica_service.model.Procedimento;
 import com.clinica_service.clinica_service.service.ProcedimentoService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Tag(name = "Procedimento", description = "Endpoints para criação e gerenciamento de procedimentos")
 @Slf4j
 @RestController
 @RequestMapping("/api/clinica/procedimentos")
@@ -23,6 +28,13 @@ public class ProcedimentoController {
 
     private final ProcedimentoService procedimentoService;
 
+    @Operation(summary = "Atualizar Dados do Paciente",
+            description = "Atualiza os dados de um Paciente")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Paciente atualizado com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @ApiResponse(responseCode = "409", description = "Dados inválidos")
+    })
     @PostMapping
     public ResponseEntity<ProcedimentoResponseDTO> criar(
             @Valid @RequestBody ProcedimentoRequestDTO request) {
@@ -43,6 +55,13 @@ public class ProcedimentoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "Buscar procedimento por ID",
+            description = "Atualiza os dados de um Paciente")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Procedimento encontrado com sucesos"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @ApiResponse(responseCode = "409", description = "Dados inválidos")
+    })
     @GetMapping("/{id}")
     public ResponseEntity<ProcedimentoResponseDTO> buscarPorId(@PathVariable Long id) {
         log.info("Buscando procedimento por ID: {}", id);
@@ -58,6 +77,13 @@ public class ProcedimentoController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Listar Procedimentos",
+            description = "Retorna um lista de procedimentos")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Procedimento encontrados com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @ApiResponse(responseCode = "409", description = "Dados inválidos")
+    })
     @GetMapping
     public ResponseEntity<List<ProcedimentoResponseDTO>> listarTodos() {
         log.info("Listando todos os procedimentos");
@@ -74,6 +100,13 @@ public class ProcedimentoController {
         return ResponseEntity.ok(procedimentos);
     }
 
+    @Operation(summary = "Listar Procedimentos de Alta Complexidade",
+            description = "Retorna um lista de procedimentos de alta complexidade")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Procedimento encontrados com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @ApiResponse(responseCode = "409", description = "Dados inválidos")
+    })
     @GetMapping("/alta-complexidade/{altaComplexidade}")
     public ResponseEntity<List<ProcedimentoResponseDTO>> listarPorAltaComplexidade(
             @PathVariable Boolean altaComplexidade) {
@@ -93,6 +126,13 @@ public class ProcedimentoController {
         return ResponseEntity.ok(procedimentos);
     }
 
+    @Operation(summary = "Atualizar Procedimento",
+            description = "Atualiza um procedimento pelo seu ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Procedimento atualizado com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @ApiResponse(responseCode = "409", description = "Dados inválidos")
+    })
     @PutMapping("/{id}")
     public ResponseEntity<ProcedimentoResponseDTO> atualizar(
             @PathVariable Long id,
@@ -115,6 +155,13 @@ public class ProcedimentoController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Deletar Procedimento",
+            description = "Deleta um procedimento pelo seu ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Procedimento deletado com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @ApiResponse(responseCode = "409", description = "Dados inválidos")
+    })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
         log.info("Deletando procedimento ID: {}", id);

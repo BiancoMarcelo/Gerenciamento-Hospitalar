@@ -18,7 +18,6 @@ public class Procedimento {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private Long agendamentoId;
 
     @Column(nullable = false)
@@ -30,10 +29,8 @@ public class Procedimento {
     @Column(nullable = false)
     private String prioridade;
 
-    @Column(nullable = false)
     private LocalDateTime horarioProcedimento;
 
     @Enumerated
-    @Column(nullable = false)
     private StatusAtendimento statusAtendimento;
 }

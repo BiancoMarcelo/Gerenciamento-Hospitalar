@@ -45,5 +45,14 @@ public class EventoPublisher {
         log.info("Exame enviado com sucesso");
     }
 
+    public void publicarExclusaoConsulta(Long id) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.QUEUE_DELETE_CONSULTA,id);
+        log.info("Delete de consulta enviado com sucesso!");
+    }
+
+    public void publicarExclusaoExame(Long id) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.QUEUE_DELETE_EXAME, id);
+        log.info("Delete de exame enviado com sucesso!");
+    }
 
 }

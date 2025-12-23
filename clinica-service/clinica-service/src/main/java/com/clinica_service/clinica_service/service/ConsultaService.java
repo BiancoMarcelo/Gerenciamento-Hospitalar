@@ -3,17 +3,21 @@ package com.clinica_service.clinica_service.service;
 import com.clinica_service.clinica_service.dto.consultadto.ConsultaDTO;
 import com.clinica_service.clinica_service.dto.consultadto.verificarconsulta.VerificarConsultaRequestDTO;
 import com.clinica_service.clinica_service.dto.consultadto.verificarconsulta.VerificarConsultaResponseDTO;
+import com.clinica_service.clinica_service.exception.custom.ConflictException;
 import com.clinica_service.clinica_service.exception.custom.ResourceNotFoundException;
 import com.clinica_service.clinica_service.mapper.ConsultaMapper;
 import com.clinica_service.clinica_service.model.Consulta;
 import com.clinica_service.clinica_service.model.StatusConsulta;
+import com.clinica_service.clinica_service.model.TipoConsulta;
 import com.clinica_service.clinica_service.repository.ConsultaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +37,8 @@ public class ConsultaService {
         if (consultaExistente.isPresent()) {
             log.warn("Consulta já existe para o agendamento ID: {} ", consultaDTO.getAgendamentoId());
         }
+
+        validarHorarioEConsulta(consultaDTO.getEspecialidadeMedico(), consultaDTO.getHorario());
 
         Consulta consulta = consultaMapper.toEntity(consultaDTO);
         consultaRepository.save(consulta);
@@ -96,7 +102,7 @@ public class ConsultaService {
 
     public Consulta buscarPorCpfEHorario(String cpf, LocalDateTime horario) {
         return consultaRepository.findByCpfPacienteAndHorario(cpf, horario)
-                .orElseThrow(()->{
+                .orElseThrow(() -> {
                     log.error("Consulta não encontrada para o CPF {} no horário {}", cpf, horario);
                     return new ResourceNotFoundException("Consulta não encontrada");
                 });
@@ -105,9 +111,73 @@ public class ConsultaService {
     public Consulta buscarPorId(Long id) {
         log.info("Buscando consulta por Id: {} ", id);
         return consultaRepository.findById(id)
-                .orElseThrow(()-> {
+                .orElseThrow(() -> {
                     log.info("Consulta não encontrada pelo id: {} ", id);
                     return new ResourceNotFoundException("Não encontrado pelo id fornecido");
                 });
+    }
+
+    public ConsultaDTO atualizarConsulta(String cpf, Long id) {
+        log.info("Atualizando consulta de ID: {} ", id);
+        if (!consultaRepository.existsByCpfPaciente(cpf)) {
+            log.info("Não encontrado pelo CPF fornecido");
+            throw new ResourceNotFoundException("Não encontrado pelo CPF fornecido");
+        }
+        atualizarStatusConsulta(id, StatusConsulta.ATENDIDA);
+        return consultaMapper.toGenericDTO(buscarPorId(id));
+
+    }
+
+    public void deletarConsultas() {
+        log.info("Deletando todas as consultas");
+        consultaRepository.deleteAll();
+    }
+
+    public void deletarConsulta(Long id) {
+        log.info("Deletando consulta de id: {} ", id);
+        Consulta consulta = consultaRepository.findById(id)
+                .or(() -> consultaRepository.findByAgendamentoId(id))
+                .orElseThrow(()-> new RuntimeException("Consulta não encontrado pelo id fornecido"));
+        consulta.setStatus(StatusConsulta.CANCELADA);
+        consultaRepository.save(consulta);
+    }
+
+    public void validarHorarioEConsulta(String nomeConsulta, LocalDateTime horario) {
+        TipoConsulta tipo = validarConsulta(nomeConsulta);
+        validarHorario(horario, tipo);
+    }
+
+    public TipoConsulta validarConsulta(String nomeConsulta) {
+        return TipoConsulta.fromDescricao(nomeConsulta);
+    }
+
+    public void validarHorario(LocalDateTime horario, TipoConsulta tipoConsulta) {
+
+        List<Consulta> consultasAgendadas = consultaRepository.findByStatus(StatusConsulta.AGENDADA);
+
+        LocalDateTime horarioSolicitado = horario;
+        LocalDateTime horarioFinalDaConsultaSolicitada = horario.plusMinutes(tipoConsulta.getDuracaoConsulta());
+
+        for (Consulta consulta : consultasAgendadas) {
+
+            TipoConsulta consultaExistente = TipoConsulta.fromDescricao(consulta.getEspecialidadeMedico().trim());
+
+            LocalDateTime horarioConsultaAgendadaDoBanco = consulta.getHorario();
+            LocalDateTime horarioFinalConsultaAgendadaDoBanco = horarioConsultaAgendadaDoBanco.plusMinutes(tipoConsulta.getDuracaoConsulta());
+
+            boolean haConflito =
+                    horarioSolicitado.isBefore(horarioFinalConsultaAgendadaDoBanco) && horarioSolicitado.isAfter(horarioConsultaAgendadaDoBanco) ||
+                            horarioFinalDaConsultaSolicitada.isAfter(horarioSolicitado) && horarioFinalDaConsultaSolicitada.isBefore(horarioFinalConsultaAgendadaDoBanco) ||
+                            horarioSolicitado.isBefore(horarioConsultaAgendadaDoBanco) && horarioFinalDaConsultaSolicitada.isAfter(horarioFinalConsultaAgendadaDoBanco) ||
+                            horarioSolicitado.equals(horarioConsultaAgendadaDoBanco);
+
+            if (haConflito) {
+                throw new ConflictException(String.format("Horário indisponível. Já existe %s agendado de %s até %s",
+                        tipoConsulta.getDescricao(),
+                        horarioConsultaAgendadaDoBanco.format(DateTimeFormatter.ofPattern("HH:mm")),
+                        horarioFinalConsultaAgendadaDoBanco.format(DateTimeFormatter.ofPattern("HH:mm"))));
+
+            }
+        }
     }
 }

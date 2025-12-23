@@ -10,6 +10,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.time.LocalDateTime;
 
 @Slf4j
 @Component
@@ -60,6 +63,22 @@ public class ClinicaClient {
         } catch (Exception e) {
             log.error("Erro inesperado ao comunicar com Clínica: {}", e.getMessage(), e);
             throw new RuntimeException("Erro ao comunicar com serviço da Clínica");
+        }
+    }
+
+    public boolean validarConsulta(String nomeConsulta, LocalDateTime horario) {
+
+        try {
+            String url = UriComponentsBuilder.fromHttpUrl(clinicaServiceUrl + "/api/clinica/validar-consulta")
+                    .queryParam("nomeConsulta", nomeConsulta)
+                    .queryParam("horario", horario.toString())
+                    .toUriString();
+            restTemplate.getForEntity(url, Void.class);
+            return true;
+        } catch (HttpClientErrorException.NotFound e) {
+            return false;
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao comunicar com clinica-service");
         }
     }
 }

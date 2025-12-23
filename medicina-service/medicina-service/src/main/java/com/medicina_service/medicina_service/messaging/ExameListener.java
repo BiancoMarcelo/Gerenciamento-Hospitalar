@@ -26,4 +26,16 @@ public class ExameListener {
             log.error("Erro ao processar a consulta: {}", e.getMessage(), e);
         }
     }
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_DELETE_EXAME)
+    public void receberDeleteExame(Long id) {
+        log.info("Mensagem recebida do RabbitMQ - Delete de exame com agendamentoId de: {} ", id);
+
+        try {
+            exameService.deletarExame(id);
+            log.info("Exame deletado com sucesso!");
+        } catch (Exception e) {
+            log.error("Erro ao processar a consulta: {}", e.getMessage(), e);
+        }
+    }
+
 }
