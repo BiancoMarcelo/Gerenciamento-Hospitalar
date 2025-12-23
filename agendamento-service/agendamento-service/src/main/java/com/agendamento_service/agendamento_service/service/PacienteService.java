@@ -21,12 +21,16 @@ public class PacienteService {
 
     private final PacienteRepository pacienteRepository;
     private final PacienteMapper pacienteMapper;
+    private final EmailService emailService;
 
     public PacienteDTO criarPaciente(PacienteDTO pacienteDTO) {
         if (pacienteRepository.existsByCpf(pacienteDTO.getCpf())) {
             throw new ConflictException("Paciente já existe em sistema!");
         }
         Paciente pacienteEntity = pacienteRepository.save(pacienteMapper.toEntity(pacienteDTO));
+
+        emailService.enviarEmailCriacaoUsuario(pacienteDTO.getEmail(), pacienteDTO.getNome());
+
         return pacienteMapper.toGlobalDTO(pacienteEntity);
     }
 

@@ -15,4 +15,6 @@ public class AgendamentoResponseDTO {
 
     @Schema(description = "Mensagem de retorno com código de agendamento ao usuário", required = false)
     private String codigo;
+
+
 }

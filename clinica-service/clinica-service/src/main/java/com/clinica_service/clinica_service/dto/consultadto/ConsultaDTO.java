@@ -28,6 +28,9 @@ public class ConsultaDTO {
     @Schema(description = "Especiliade médica escolhida para consulta do paciente", required = false)
     private String especialidadeMedico;
 
+    @Schema(description = "Email de cadastro do paciente")
+    private String email;
+
     @Schema(description = "Status da consulta",
             example = "ATENDIDA",
             required = false)

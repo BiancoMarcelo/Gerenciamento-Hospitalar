@@ -9,6 +9,7 @@ import com.medicina_service.medicina_service.dto.procedimentodto.request_respons
 import com.medicina_service.medicina_service.exception.custom.BadRequestException;
 import com.medicina_service.medicina_service.exception.custom.ConflictException;
 import com.medicina_service.medicina_service.exception.custom.ResourceNotFoundException;
+import com.medicina_service.medicina_service.exception.custom.UnauthorizedException;
 import com.medicina_service.medicina_service.mapper.ProcedimentoMapper;
 import com.medicina_service.medicina_service.model.Exame;
 import com.medicina_service.medicina_service.model.Procedimento;
@@ -48,10 +49,6 @@ public class ProcedimentoService {
             throw new BadRequestException("Tipo de procedimento não atendido pela rede: " + procedimentoRequestDTO.getNomeProcedimento());
         }
 
-//        if (tipo.isAltaComplexidade() && !"MEDICO".equals(role)) {
-//            throw new RuntimeException("Procedimentos de alta complexidade só podem ser criados por médicos!");
-//        }
-
         validarHorario(procedimentoRequestDTO.getHorarioProcedimento(),
                 procedimentoRequestDTO.getPrioridade(),
                 TipoProcedimento.fromDescricao(procedimentoRequestDTO.getNomeProcedimento().trim()));
@@ -87,10 +84,6 @@ public class ProcedimentoService {
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Tipo de procedimento não atendido pela rede: " + procedimentoRequestDTO.getNomeProcedimento());
         }
-
-//        if (tipo.isAltaComplexidade() && !"MEDICO".equals(role)) {
-//            throw new RuntimeException("Procedimentos de alta complexidade só podem ser criados por médicos!");
-//        }
 
         Procedimento procedimentoCirurgico = procedimentoRepository.save(procedimentoMapper.toProcedimentoCirurgicoEntity(procedimentoRequestDTO));
 
@@ -235,7 +228,6 @@ public class ProcedimentoService {
 
     @Transactional
     public void sobrescreverHorario(LocalDateTime horario) {
-        log.info("Sobrescrevendo horários de procedimentos");
 
         List<Procedimento> procedimentosNoHorario = procedimentoRepository.findAllByHorarioProcedimento(horario);
 

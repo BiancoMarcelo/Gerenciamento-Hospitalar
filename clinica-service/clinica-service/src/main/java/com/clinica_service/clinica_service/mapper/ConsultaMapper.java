@@ -19,6 +19,7 @@ public class ConsultaMapper {
                 .agendamentoId(dto.getAgendamentoId())
                 .cpfPaciente(dto.getCpfPaciente())
                 .nomePaciente(dto.getNomePaciente())
+                .email(dto.getEmail())
                 .horario(dto.getHorario())
                 .especialidadeMedico(dto.getEspecialidadeMedico())
                 .status(StatusConsulta.AGENDADA)

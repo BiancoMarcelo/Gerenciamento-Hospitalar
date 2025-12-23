@@ -32,4 +32,9 @@ public class PacienteDTO {
     @Schema(description = "Sexo do paciente", required = true)
     @NotBlank(message = "Sexo é obrigatório")
     private String sexo;
+
+    @Schema(description = "Email do paciente", required = true)
+    @Email(message = "Email inválido")
+    @NotBlank(message = "Email é obrigatório")
+    private String email;
 }

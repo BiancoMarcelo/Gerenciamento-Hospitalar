@@ -24,6 +24,9 @@ public class Consulta {
     private String nomePaciente;
 
     @Column(nullable = false)
+    private String email;
+
+    @Column(nullable = false)
     private LocalDateTime horario;
 
     @Column(nullable = false)

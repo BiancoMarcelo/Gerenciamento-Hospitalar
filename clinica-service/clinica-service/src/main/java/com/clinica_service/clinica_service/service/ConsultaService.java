@@ -137,7 +137,7 @@ public class ConsultaService {
         log.info("Deletando consulta de id: {} ", id);
         Consulta consulta = consultaRepository.findById(id)
                 .or(() -> consultaRepository.findByAgendamentoId(id))
-                .orElseThrow(()-> new RuntimeException("Consulta não encontrado pelo id fornecido"));
+                .orElseThrow(() -> new RuntimeException("Consulta não encontrado pelo id fornecido"));
         consulta.setStatus(StatusConsulta.CANCELADA);
         consultaRepository.save(consulta);
     }
@@ -155,28 +155,39 @@ public class ConsultaService {
 
         List<Consulta> consultasAgendadas = consultaRepository.findByStatus(StatusConsulta.AGENDADA);
 
-        LocalDateTime horarioSolicitado = horario;
-        LocalDateTime horarioFinalDaConsultaSolicitada = horario.plusMinutes(tipoConsulta.getDuracaoConsulta());
+        LocalDateTime inicioNovo = horario;
+        LocalDateTime fimNovo = horario.plusMinutes(tipoConsulta.getDuracaoConsulta());
 
-        for (Consulta consulta : consultasAgendadas) {
+        for (Consulta consultaExistente : consultasAgendadas) {
 
-            TipoConsulta consultaExistente = TipoConsulta.fromDescricao(consulta.getEspecialidadeMedico().trim());
+            LocalDateTime inicioExistente = consultaExistente.getHorario();
 
-            LocalDateTime horarioConsultaAgendadaDoBanco = consulta.getHorario();
-            LocalDateTime horarioFinalConsultaAgendadaDoBanco = horarioConsultaAgendadaDoBanco.plusMinutes(tipoConsulta.getDuracaoConsulta());
 
-            boolean haConflito =
-                    horarioSolicitado.isBefore(horarioFinalConsultaAgendadaDoBanco) && horarioSolicitado.isAfter(horarioConsultaAgendadaDoBanco) ||
-                            horarioFinalDaConsultaSolicitada.isAfter(horarioSolicitado) && horarioFinalDaConsultaSolicitada.isBefore(horarioFinalConsultaAgendadaDoBanco) ||
-                            horarioSolicitado.isBefore(horarioConsultaAgendadaDoBanco) && horarioFinalDaConsultaSolicitada.isAfter(horarioFinalConsultaAgendadaDoBanco) ||
-                            horarioSolicitado.equals(horarioConsultaAgendadaDoBanco);
+            if (!inicioNovo.toLocalDate().equals(inicioExistente.toLocalDate())) {
+                continue;
+            }
+
+            if (!tipoConsulta.getDescricao().equalsIgnoreCase(
+                    consultaExistente.getEspecialidadeMedico())) {
+                continue;
+            }
+
+            TipoConsulta tipoExistente = TipoConsulta.fromDescricao(
+                    consultaExistente.getEspecialidadeMedico().trim()
+            );
+
+            LocalDateTime fimExistente = inicioExistente.plusMinutes(tipoExistente.getDuracaoConsulta());
+
+            boolean haConflito = inicioNovo.isBefore(fimExistente) && fimNovo.isAfter(inicioExistente);
 
             if (haConflito) {
-                throw new ConflictException(String.format("Horário indisponível. Já existe %s agendado de %s até %s",
-                        tipoConsulta.getDescricao(),
-                        horarioConsultaAgendadaDoBanco.format(DateTimeFormatter.ofPattern("HH:mm")),
-                        horarioFinalConsultaAgendadaDoBanco.format(DateTimeFormatter.ofPattern("HH:mm"))));
-
+                throw new ConflictException(
+                        String.format("Horário indisponível. O médico %s já possui consulta agendada de %s às %s",
+                                tipoExistente.getDescricao(),
+                                inicioExistente.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                                fimExistente.format(DateTimeFormatter.ofPattern("HH:mm"))
+                        )
+                );
             }
         }
     }

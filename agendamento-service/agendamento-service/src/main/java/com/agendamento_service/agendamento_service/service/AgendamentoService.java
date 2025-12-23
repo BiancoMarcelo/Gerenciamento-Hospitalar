@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Slf4j
@@ -35,6 +36,7 @@ public class AgendamentoService {
     private final PacienteService pacienteService;
     private final MedicinaClient medicinaClient;
     private final ClinicaClient clinicaClient;
+    private final EmailService emailService;
 
     @Transactional
     public AgendamentoResponseDTO agendarConsulta(AgendamentoConsultaRequestDTO agendamentoConsultaRequestDTO) {
@@ -57,6 +59,14 @@ public class AgendamentoService {
 
         log.info("Consulta agendada com sucesso. Id: {} ", agendamentoSalvo.getId());
 
+        emailService.enviarEmailConsultaAgendada(
+                agendamentoConsultaRequestDTO.getPaciente().getEmail(),
+                agendamentoConsultaRequestDTO.getPaciente().getNome(),
+                agendamentoConsultaRequestDTO.getMedico(),
+                agendamentoSalvo.getHorario().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                agendamentoSalvo.getId().toString()
+        );
+
         return agendamentoMapper.toAgendamentoConsultaResponseDTO(agendamentoSalvo);
 
     }
@@ -78,6 +88,14 @@ public class AgendamentoService {
         Agendamento agendamento = agendamentoRepository.save(agendamentoMapper.toEntityExame(agendamentoExameRequestDTO, paciente));
 
         eventoPublisher.publicarExame(agendamento);
+
+        emailService.enviarEmailExameAgendado(
+                agendamentoExameRequestDTO.getPaciente().getEmail(),
+                agendamentoExameRequestDTO.getPaciente().getNome(),
+                agendamentoExameRequestDTO.getExame(),
+                agendamento.getHorario().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                agendamento.getId().toString()
+        );
 
         return agendamentoMapper.toAgendamentoExameResponseDTO(agendamento);
 

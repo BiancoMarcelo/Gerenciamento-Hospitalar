@@ -27,4 +27,7 @@ public class Paciente {
 
     @Column(nullable = false)
     private String sexo;
+
+    @Column(nullable = false)
+    private String email;
 }

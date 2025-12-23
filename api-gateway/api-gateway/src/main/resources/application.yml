@@ -1,0 +1,49 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/hospital
+          jwk-set-uri: http://localhost:8180/realms/hospital/protocol/openid-connect/certs
+
+  cloud:
+    gateway:
+      routes:
+        - id: agendamento-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/agendamento/**
+          filters:
+            - StripPrefix=1
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY ,SERVICE_UNAVAILABLE
+
+        - id: clinica-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/clinica/**
+          filters:
+            - StripPrefix=1
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY ,SERVICE_UNAVAILABLE
+
+        - id: medicina-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/medicina/**
+          filters:
+            - StripPrefix=1
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY ,SERVICE_UNAVAILABLE

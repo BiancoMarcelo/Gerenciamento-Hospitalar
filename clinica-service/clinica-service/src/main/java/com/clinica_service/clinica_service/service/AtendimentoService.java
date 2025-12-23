@@ -28,7 +28,6 @@ public class AtendimentoService {
     private final AtendimentoRepository atendimentoRepository;
     private final ConsultaService consultaService;
     private final SintomaRepository sintomaRepository;
-    private final ConsultaRepository consultaRepository;
     private final DoencaRepository doencaRepository;
     private final ProcedimentoMapper procedimentoMapper;
     private final ProcedimentoPublisher procedimentoPublisher;

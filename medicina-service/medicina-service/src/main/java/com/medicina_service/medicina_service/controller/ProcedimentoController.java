@@ -17,8 +17,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.Response;
 import org.aspectj.weaver.loadtime.Agent;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Tag(name = "Procedimentos", description = "Endpoints para criação e gerenciamento de Procedimentos")
 @Slf4j

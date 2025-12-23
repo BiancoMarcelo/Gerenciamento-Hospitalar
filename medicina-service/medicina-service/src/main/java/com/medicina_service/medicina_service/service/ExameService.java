@@ -47,10 +47,6 @@ public class ExameService {
                 procedimentoRequestDTO.getPrioridade(),
                 TipoProcedimento.fromDescricao(procedimentoRequestDTO.getNomeExame().trim()));
 
-//        if (tipo.isAltaComplexidade() && !"MEDICO".equals(role)) {
-//            throw new RuntimeException("Procedimentos de alta complexidade só podem ser criados por médicos!");
-//        }
-
         Exame exame = Exame.builder()
                 .agendamentoId(procedimentoRequestDTO.getAgendamentoId())
                 .horarioExame(procedimentoRequestDTO.getHorarioProcedimento())
@@ -74,10 +70,6 @@ public class ExameService {
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Tipo de exame não atendido pela rede: " + procedimentoRequestDTO.getNomeExame());
         }
-
-//        if (tipo.isAltaComplexidade() && !"MEDICO".equals(role)) {
-//            throw new RuntimeException("Procedimentos de alta complexidade só podem ser criados por médicos!");
-//        }
 
         validarHorario(procedimentoRequestDTO.getHorarioProcedimento(),
                 procedimentoRequestDTO.getPrioridade(),
