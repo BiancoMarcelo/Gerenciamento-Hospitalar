@@ -11,6 +11,7 @@ import com.agendamento_service.agendamento_service.exception.custom.ConflictExce
 import com.agendamento_service.agendamento_service.exception.custom.ResourceNotFoundException;
 import com.agendamento_service.agendamento_service.mapper.AgendamentoMapper;
 import com.agendamento_service.agendamento_service.messaging.event.EventoPublisher;
+import com.agendamento_service.agendamento_service.messaging.event.KafkaEventoPublisher;
 import com.agendamento_service.agendamento_service.model.Agendamento;
 import com.agendamento_service.agendamento_service.model.Paciente;
 import com.agendamento_service.agendamento_service.model.TipoAgendamento;
@@ -38,6 +39,7 @@ public class AgendamentoService {
     private final MedicinaClient medicinaClient;
     private final ClinicaClient clinicaClient;
     private final EmailService emailService;
+    private final KafkaEventoPublisher kafkaEventoPublisher;
 
     @Transactional
     public AgendamentoResponseDTO agendarConsulta(AgendamentoConsultaRequestDTO agendamentoConsultaRequestDTO) {
@@ -57,6 +59,7 @@ public class AgendamentoService {
         Agendamento agendamentoSalvo = agendamentoRepository.save(agendamentoMapper.toEntityConsulta(agendamentoConsultaRequestDTO, paciente));
 
         eventoPublisher.publicarConsulta(agendamentoSalvo);
+        kafkaEventoPublisher.publicarHistoricoAgendamento(agendamentoSalvo);
 
         log.info("Consulta agendada com sucesso. Id: {} ", agendamentoSalvo.getId());
 
